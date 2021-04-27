@@ -371,7 +371,7 @@ class SaveLoad(DistributedTicker, RollbackService):
         if self.is_it_time_yet():
             self._save(self.context.get_global_step())
             if getattr(self.context,'best_bleu',None) is not None and  self.context.last_bleu == self.context.best_bleu:
-                self._save("best_bleu")
+                self._save("best_bleu", is_special=True)
             if (self.avg_last_checkpoints is not None) and\
                 (int(int(self._find_latest_label()) / self.every_steps) % self.avg_last_checkpoints == 0):
                 print("\n AVERAGING CHECKPOINTS: \n")
@@ -484,7 +484,7 @@ class SaveLoad(DistributedTicker, RollbackService):
             print('! Saving graph to %r' % os.path.join(self.folder, 'graph.pbtxt'), file=sys.stderr, flush=True)
             tf.train.write_graph(tf.get_default_session().graph_def, self.folder, 'graph.pbtxt')
 
-    def _save(self, label):
+    def _save(self, label, is_special=False):
         # Save (only on master)
         if lib.ops.mpi.is_master():
             model_vars = saveload.get_model_variables()
@@ -496,22 +496,23 @@ class SaveLoad(DistributedTicker, RollbackService):
             saveload.save(model_path, model_vars)
             saveload.save(state_path, state_vars)
 
-            if self.keep_checkpoints_max:
-                self._remove_old_labels()
+            if not is_special:
+                if self.keep_checkpoints_max:
+                    self._remove_old_labels()
 
-            # Create symlink 'model-latest.npz'.
-            sym_from = 'model-%s.npz' % label
-            sym_to = os.path.join(self.folder, 'model-latest.npz')
-            try:
-                os.unlink(sym_to)
-            except OSError as e:
-                if e.errno != 2: # File not found.
-                    raise
-            os.symlink(sym_from, sym_to)
+                # Create symlink 'model-latest.npz'.
+                sym_from = 'model-%s.npz' % label
+                sym_to = os.path.join(self.folder, 'model-latest.npz')
+                try:
+                    os.unlink(sym_to)
+                except OSError as e:
+                    if e.errno != 2: # File not found.
+                        raise
+                os.symlink(sym_from, sym_to)
 
     def _remove_old_labels(self):
         """Removes oldest labels"""
-        labels = self._get_sorted_labels()
+        labels = [ l for l in self._get_sorted_labels() if l!= "best_bleu" ]
         for index in range(0, len(labels) - self.keep_checkpoints_max):
             os.remove(os.path.join(self.folder, 'model-%s.npz' % labels[index]))
             os.remove(os.path.join(self.folder, 'state-%s.npz' % labels[index]))
