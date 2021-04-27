@@ -9,7 +9,7 @@ from .bleu import Bleu
 # - TranslateTicker - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 def unbpe(sent):
-    return sent.replace(' `', '')
+    return sent.replace('@@ ', '')
 
 
 class TranslateTicker(DistributedTicker):
