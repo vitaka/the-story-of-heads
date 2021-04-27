@@ -370,6 +370,8 @@ class SaveLoad(DistributedTicker, RollbackService):
     def after_train_batch(self, ingraph_result):
         if self.is_it_time_yet():
             self._save(self.context.get_global_step())
+            if getattr(self.context,'best_bleu',None) is not None and  self.context.last_bleu == self.context.best_bleu:
+                self._save("best_bleu")
             if (self.avg_last_checkpoints is not None) and\
                 (int(int(self._find_latest_label()) / self.every_steps) % self.avg_last_checkpoints == 0):
                 print("\n AVERAGING CHECKPOINTS: \n")

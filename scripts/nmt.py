@@ -231,6 +231,8 @@ def TRAIN_add_params(subp):
     p.add_argument('--translate-dev', action='store_true', default=False)
     p.add_argument('--translate-dev-every', default=4096, type=int)
     p.add_argument('--translate-dev-initial', action='store_true', default=False)
+    p.add_argument('--translate-dev-early-stop', action='store_true', default=False)
+    p.add_argument('--translate-dev-patience',default=10, type=int)
     p.add_argument('--score-dev-every', default=256, type=int)
     p.add_argument('--score-dev-initial', action='store_true', default=False)
     p.add_argument('--learning-rate-stop-value', default=0.0, type=float)
@@ -468,7 +470,7 @@ def TRAIN(args):
                                                initial=args.translate_dev_initial,
                                                suffix=model.get('dev_suffix'),
                                                device=model.get('device'),
-                                               parallel=args.translate_parallel, ), )
+                                               parallel=args.translate_parallel, early_stop=args.translate_dev_early_stop, patience=args.translate_dev_patience))
 
         lib.train.train(problem, algo, train_np, tickers,
                         tick_every_steps=args.optimizer_opts.get('sync_every_steps', 0))
@@ -505,4 +507,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

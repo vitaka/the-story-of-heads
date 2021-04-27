@@ -18,7 +18,7 @@ class TranslateTicker(DistributedTicker):
     - Print BLEU to stderr after each translation.
     """
     def __init__(self, model_name, devset, name='Dev', every_steps=None, every_minutes=None, initial=False, folder=None,
-                 suffix=None, device=None, parallel=True):
+                 suffix=None, device=None, parallel=True, early_stop=False,patience=10):
         self.model_name = model_name
         self.devset = devset
         self.every_steps = every_steps
@@ -31,6 +31,9 @@ class TranslateTicker(DistributedTicker):
         self.suffix = suffix if suffix is not None else model_name
         if self.suffix:  # add underscore if we add suffix
             self.suffix = '_' + self.suffix
+
+        self.early_stop=early_stop
+        self.patience=patience
 
     def on_started(self, context):
         self.devset_batches = list(self.devset)
@@ -46,6 +49,8 @@ class TranslateTicker(DistributedTicker):
 
         self.is_it_time_yet = _IsItTimeYet(
             context, self.every_steps, self.every_minutes)
+
+        self.bleus=[]
 
         # Score devset after initialization if option passed (and we are not loading some non-init checkpoint)
         if self.initial and context.get_global_step() == 0:
@@ -92,12 +97,20 @@ class TranslateTicker(DistributedTicker):
                 bleu.process_next(trans, [ethalon])
             bleu_value = 100 * (bleu.total()[0])
 
+            self.bleus.append(bleu_value)
+
             print('BLEU %f' % bleu_value, file=sys.stderr, flush=True)
 
             summary = tf.get_default_session().run(self.summary, feed_dict={self.bleu: bleu_value,
                                                                             self.translations: translations})
 
             self.context.get_summary_writer().add_summary(summary, self.context.get_global_step())
+
+            self.context.last_bleu=bleu_value
+            self.context.best_bleu=max(self.bleus)
+            if self.early_stop and len(self.bleus) > self.patience:
+                if max(self.bleus) > max(self.bleus[-self.patience:]):
+                    self.context.stop_training("Early stop based on dev BLEU")
 
     def _dump_translations(self, translations, fname):
         if not os.path.isdir(self.folder):
