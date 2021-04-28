@@ -1,6 +1,15 @@
+#!/usr/bin/env python3
+
+
 import pickle
 import numpy as np
 import tensorflow as tf
+import argparse
+
+import os
+import sys
+sys.path.insert(0, os.path.dirname(__file__) + '/..')
+
 import lib
 import lib.task.seq2seq.models.transformer_lrp as tr
 
@@ -35,27 +44,26 @@ def translate(args):
         for t in translations:
             print(t)
 
-def TRANSLATE_add_params(subp):
-    eval_arg = lambda x: eval(x, locals(), globals())
-
-    p = subp.add_parser('translate')
-    p.add_argument('--hp', type=eval_arg, default={})
+def TRANSLATE_add_params(p):
+    #eval_arg = lambda x: eval(x, locals(), globals())
+    p.add_argument('--hp', default="{}")
     p.add_argument('--ivoc', required=True)
     p.add_argument('--ovoc', required=True)
     p.add_argument('--checkpoint',help="Path to checkpoint", required=True)
     p.add_argument('--input',help="Path to input file", required=True)
+    p.add_argument('--end-of-params', action='store_true', default=False)
 
 
 def main():
     # Create parser.
-    p = argparse.ArgumentParser('nmt.py')
-    subp = p.add_subparsers(dest='cmd')
+    p = argparse.ArgumentParser('translate.py')
 
     # Add subcommands.
-    train = TRANSLATE_add_params(subp)
+    train = TRANSLATE_add_params(p)
 
     # Parse.
     args = p.parse_args()
+    args.hp=eval(args.hp, locals(), globals())
 
     translate(args)
 
