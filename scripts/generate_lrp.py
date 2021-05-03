@@ -100,15 +100,15 @@ def generate_lrp(args):
 
 
     #Manual, inefficient, in-memory batcher
-    num_batches=len(test_src)//BATCH_SIZE
-    if len(test_src) % BATCH_SIZE > 0:
-        num_batches+=1
+    #num_batches=len(test_src)//BATCH_SIZE
+    #if len(test_src) % BATCH_SIZE > 0:
+    #    num_batches+=1
 
-    for batch_id in range(num_batches):
-        batch_data=test_src[batch_id*BATCH_SIZE:(batch_id+1)*BATCH_SIZE]
-        translations=model.translate_lines(batch_data)
-        for t in translations:
-            print(t)
+    #for batch_id in range(num_batches):
+    #    batch_data=test_src[batch_id*BATCH_SIZE:(batch_id+1)*BATCH_SIZE]
+    #    translations=model.translate_lines(batch_data)
+    #    for t in translations:
+    #        print(t)
 
 def TRANSLATE_add_params(p):
     #eval_arg = lambda x: eval(x, locals(), globals())

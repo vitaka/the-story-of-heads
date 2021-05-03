@@ -63,7 +63,7 @@ def avg_lrp_by_src_pos_normed(data, ignore_eos=False):
         res *= data[0]['inp_lrp'].shape[1]
     return res
 
-def plot_source_influence(data,filename):
+def plot_source_influence(data,filename,color):
     fig = plt.figure(figsize=(7, 6), dpi=100)
 
     res = avg_lrp_by_pos(data, seg='inp')[1:]
@@ -85,7 +85,8 @@ def main():
     p.add_argument('--data', required=True)
     p.add_argument('--output-prefix', required=True)
 
-    pictdir = # out dir, where to save the figures
+    args = p.parse_args()
+
     data = pickle.load(open(args.data, 'rb'))
 
     #Plot configuration
@@ -99,7 +100,7 @@ def main():
     spectral_map = [matplotlib.colors.rgb2hex(cmap(i)[:3]) for i in range(cmap.N)]
     color = spectral_map[-1]
 
-    plot_source_influence(data,args.output_prefix+".sourceinfluence.png")
+    plot_source_influence(data,args.output_prefix+".sourceinfluence.png",color)
 
 
 if __name__ == '__main__':
