@@ -1,14 +1,24 @@
 #! /bin/bash
-
 MYFULLPATH=$(readlink -f $0)
 CURDIR=$(dirname $MYFULLPATH)
 
-DEVPREFIX="dev.bpe"
+DEVPREFIX="devtranslated.bpe"
 DEVFILTERED="dev.bpe.samesize"
 
 SL=$1
 TL=$2
-CORPUSDIR=$3
+TRAINDIR=$3
+
+CORPUSDIR="$TRAINDIR/corpus"
+
+#Find translated dev set for best checkpoint
+#TODO: extract update number from tune if the final BLEU is better
+UPD=$( python $CURDIR/extract-update-num.py "$TRAINDIR/model/build/checkpoint/train.state-best_bleu.npz"  )
+
+TRANSLATIONS="$TRAINDIR/model/build/translations/translations_$UPD.txt"
+
+cut -f 1 $TRANSLATIONS > $CORPUSDIR/$DEVPREFIX.$SL
+cut -f 2 $TRANSLATIONS > $CORPUSDIR/$DEVPREFIX.$TL
 
 #Count tokens
 for L in $SL $TL ; do
