@@ -3,7 +3,7 @@ MYFULLPATH=$(readlink -f $0)
 CURDIR=$(dirname $MYFULLPATH)
 
 DEVPREFIX="devtranslated.bpe"
-DEVFILTERED="dev.bpe.samesize"
+DEVFILTERED="devtranslated.bpe.samesize"
 
 SL=$1
 TL=$2
