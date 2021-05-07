@@ -18,7 +18,7 @@ from lib.layers.basic import dropout_scope
 from lib.ops import record_activations as rec
 from lib.layers.lrp import LRP
 
-BATCH_SIZE=50
+BATCH_SIZE=24
 
 
 def get_topk_logits_selector(logits, k=3):

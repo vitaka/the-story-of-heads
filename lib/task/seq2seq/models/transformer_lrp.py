@@ -347,7 +347,7 @@ class Model(TranslateModelBase):
         else:
             raise NotImplementedError("inference_mode %s is not supported" % inference_mode)
 
-    def hamming_distance_sample(sents, tau, bos_id, eos_id, pad_id, vocab_size):
+    def hamming_distance_sample(self,sents, tau, bos_id, eos_id, pad_id, vocab_size):
         # mask
         mask = [
         tf.equal(sents, bos_id),
@@ -396,8 +396,9 @@ class Model(TranslateModelBase):
 
         inp_len = batch.get('inp_len', infer_length(inp, self.inp_voc.eos, time_major=False))  # [batch]
         out_len = batch.get('out_len', infer_length(out, self.out_voc.eos, time_major=False))  # [batch]
-
-        out = hamming_distance_sample(out,1.0,self.out_voc.bos,self.out_voc.eos, self.out_voc.pad, self.out_voc.size())
+        
+        if self.hp.get("raml",False):
+            out = self.hamming_distance_sample(out, self.hp.get("raml_temp"),self.out_voc.bos,self.out_voc.eos, self.out_voc.eos, self.out_voc.size())
 
         out_reverse = tf.zeros_like(inp_len)  # batch['out_reverse']
 
