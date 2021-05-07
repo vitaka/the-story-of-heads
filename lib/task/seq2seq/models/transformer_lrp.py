@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import tensorflow as tf
+
 from lib.layers.basic import *
 from lib.layers.attn_lrp import MultiHeadAttn
 from lib.ops import *
@@ -345,12 +347,57 @@ class Model(TranslateModelBase):
         else:
             raise NotImplementedError("inference_mode %s is not supported" % inference_mode)
 
+    def hamming_distance_sample(sents, tau, bos_id, eos_id, pad_id, vocab_size):
+        # mask
+        mask = [
+        tf.equal(sents, bos_id),
+        tf.equal(sents, eos_id),
+        tf.equal(sents, pad_id),
+        ]
+        mask = tf.stack(mask, axis=0)
+        mask = tf.reduce_any(mask, axis=0)
+
+        # first, sample the number of words to corrupt for each sentence
+        batch_size, n_steps = tf.unstack(tf.shape(sents))
+        logits = -tf.range(tf.to_float(n_steps), dtype=tf.float32) * tau
+        logits = tf.expand_dims(logits, axis=0)
+        logits = tf.tile(logits, [batch_size, 1])
+        logits = tf.where(mask,
+        x=tf.fill([batch_size, n_steps], -float("inf")), y=logits)
+
+        # sample the number of words to corrupt at each sentence
+        num_words = tf.multinomial(logits, num_samples=1)
+        num_words = tf.reshape(num_words, [batch_size])
+        num_words = tf.to_float(num_words)
+
+        # <bos> and <eos> should never be replaced!
+        lengths = tf.reduce_sum(1.0 - tf.to_float(mask), axis=1)
+
+        # sample corrupted positions
+        probs = num_words / lengths
+        probs = tf.expand_dims(probs, axis=1)
+        probs = tf.tile(probs, [1, n_steps])
+        probs = tf.where(mask, x=tf.zeros_like(probs), y=probs)
+        bernoulli = tf.distributions.Bernoulli(probs=probs, dtype=tf.int32)
+
+        pos = bernoulli.sample()
+        pos = tf.cast(pos, tf.bool)
+
+        # sample the corrupted values
+        val = tf.random_uniform([batch_size, n_steps], minval=1, maxval=vocab_size, dtype=tf.int32)
+        val = tf.where(pos, x=val, y=tf.zeros_like(val))
+        sents = tf.mod(sents + val, vocab_size)
+        return sents
+
     # Train interface
     def encode_decode(self, batch, is_train, score_info=False):
         inp = batch['inp']  # [batch_size * ninp]
         out = batch['out']  # [batch_size * nout]
+
         inp_len = batch.get('inp_len', infer_length(inp, self.inp_voc.eos, time_major=False))  # [batch]
         out_len = batch.get('out_len', infer_length(out, self.out_voc.eos, time_major=False))  # [batch]
+
+        out = hamming_distance_sample(out,1.0,self.out_voc.bos,self.out_voc.eos, self.out_voc.pad, self.out_voc.size())
 
         out_reverse = tf.zeros_like(inp_len)  # batch['out_reverse']
 
@@ -622,4 +669,3 @@ class TranslateModelLazy(TranslateModel):
 
     def get_attnP(self, dec_state, **kwargs):
         return dec_state[2]
-
