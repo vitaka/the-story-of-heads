@@ -396,7 +396,9 @@ class Model(TranslateModelBase):
 
         inp_len = batch.get('inp_len', infer_length(inp, self.inp_voc.eos, time_major=False))  # [batch]
         out_len = batch.get('out_len', infer_length(out, self.out_voc.eos, time_major=False))  # [batch]
-        
+
+        if self.hp.get("switchout",False):
+            inp = self.hamming_distance_sample(imp, self.hp.get("switchout_temp"),self.imp_voc.bos,self.imp_voc.eos, self.imp_voc.eos, self.imp_voc.size())
         if self.hp.get("raml",False):
             out = self.hamming_distance_sample(out, self.hp.get("raml_temp"),self.out_voc.bos,self.out_voc.eos, self.out_voc.eos, self.out_voc.size())
 
