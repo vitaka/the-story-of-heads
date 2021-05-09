@@ -118,7 +118,7 @@ class DefaultProblem(Problem):
         if hasattr(self.model, 'batch_counters'):
             return self.model.batch_counters(pre_batch, is_train)
 
-        batch=_make_da_batch(pre_batch)
+        batch=self._make_da_batch(pre_batch,is_train)
 
         rdo = self.model.encode_decode(self._make_encdec_batch(batch, is_train), is_train)
 
@@ -139,7 +139,7 @@ class DefaultProblem(Problem):
         if hasattr(self.model, 'batch_counters'):
             return self.model.batch_counters(pre_batch, is_train)
 
-        batch=_make_da_batch(pre_batch)
+        batch=self._make_da_batch(pre_batch,is_train)
 
         rdo = self.model.encode_decode(self._make_encdec_batch(batch, is_train), is_train)
 
