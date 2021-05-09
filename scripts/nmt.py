@@ -90,6 +90,10 @@ def load_default_problem(model_class_name, inp_voc_path, out_voc_path, hp, probl
         hp['align'] = align
     if len(feat_vocs) > 0:
         hp['feat_vocs'] = feat_vocs
+    problem_config['raml']=hp.get('raml',False)
+    problem_config['switchout']=hp.get('switchout',False)
+    problem_config['raml_temp']=hp.get('raml_temp',None)
+    problem_config['switchout_temp']=hp.get('switchout_temp',None)
     return DefaultProblem({'mod': model_cls('mod', inp_voc, out_voc, **hp)}, **problem_config)
 
 

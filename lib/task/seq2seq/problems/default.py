@@ -25,7 +25,7 @@ def word_dropout(inp, inp_len, dropout, method, voc):
 class DefaultProblem(Problem):
 
     def __init__(self, models, sum_loss=False, use_small_batch_multiplier=False,
-        inp_word_dropout=0, out_word_dropout=0, word_dropout_method='unk',
+        inp_word_dropout=0, out_word_dropout=0, word_dropout_method='unk',raml=False,switchout=False,raml_temp=1.0, switchout_temp=1.0
     ):
         assert len(models) == 1
 
@@ -42,8 +42,55 @@ class DefaultProblem(Problem):
         self.out_word_dropout = out_word_dropout
         self.word_dropout_method = word_dropout_method
 
+        self.raml=raml
+        self.raml_temp=raml_temp
+        self.switchout=switchout
+        self.switchout_temp=switchout_temp
+
         if self.use_small_batch_multiplier:
             self.max_batch_size_var = tf.get_variable("max_batch_size", shape=[], initializer=tf.ones_initializer(), trainable=False)
+
+    def hamming_distance_sample(self,sents, tau, bos_id, eos_id, pad_id, vocab_size):
+        # mask
+        mask = [
+        tf.equal(sents, bos_id),
+        tf.equal(sents, eos_id),
+        tf.equal(sents, pad_id),
+        ]
+        mask = tf.stack(mask, axis=0)
+        mask = tf.reduce_any(mask, axis=0)
+
+        # first, sample the number of words to corrupt for each sentence
+        batch_size, n_steps = tf.unstack(tf.shape(sents))
+        logits = -tf.range(tf.to_float(n_steps), dtype=tf.float32) * tau
+        logits = tf.expand_dims(logits, axis=0)
+        logits = tf.tile(logits, [batch_size, 1])
+        logits = tf.where(mask,
+        x=tf.fill([batch_size, n_steps], -float("inf")), y=logits)
+
+        # sample the number of words to corrupt at each sentence
+        num_words = tf.multinomial(logits, num_samples=1)
+        num_words = tf.reshape(num_words, [batch_size])
+        num_words = tf.to_float(num_words)
+
+        # <bos> and <eos> should never be replaced!
+        lengths = tf.reduce_sum(1.0 - tf.to_float(mask), axis=1)
+
+        # sample corrupted positions
+        probs = num_words / lengths
+        probs = tf.expand_dims(probs, axis=1)
+        probs = tf.tile(probs, [1, n_steps])
+        probs = tf.where(mask, x=tf.zeros_like(probs), y=probs)
+        bernoulli = tf.distributions.Bernoulli(probs=probs, dtype=tf.int32)
+
+        pos = bernoulli.sample()
+        pos = tf.cast(pos, tf.bool)
+
+        # sample the corrupted values
+        val = tf.random_uniform([batch_size, n_steps], minval=1, maxval=vocab_size, dtype=tf.int32)
+        val = tf.where(pos, x=val, y=tf.zeros_like(val))
+        sents = tf.mod(sents + val, vocab_size)
+        return sents
 
     def _make_encdec_batch(self, batch, is_train):
         encdec_batch = copy(batch)
@@ -56,9 +103,22 @@ class DefaultProblem(Problem):
 
         return encdec_batch
 
-    def batch_counters(self, batch, is_train):
+    def _make_da_batch(self,batch,is_train):
+        da_batch = copy(batch)
+
+        if is_train and self.raml:
+            da_batch['out']=self.hamming_distance_sample(da_batch['out'], self.raml_temp,self.out_voc.bos,self.out_voc.eos, self.out_voc.eos, self.out_voc.size())
+
+        if is_train and self.switchout:
+            da_batch['inp']=self.hamming_distance_sample(da_batch['inp'], self.switchout_temp,self.inp_voc.bos,self.inp_voc.eos, self.inp_voc.eos, self.inp_voc.size())
+
+        return da_batch
+
+    def batch_counters(self, pre_batch, is_train):
         if hasattr(self.model, 'batch_counters'):
-            return self.model.batch_counters(batch, is_train)
+            return self.model.batch_counters(pre_batch, is_train)
+
+        batch=_make_da_batch(pre_batch)
 
         rdo = self.model.encode_decode(self._make_encdec_batch(batch, is_train), is_train)
 
@@ -75,9 +135,11 @@ class DefaultProblem(Problem):
         append_counters_io(counters, batch['inp'], batch['out'], batch['inp_len'], batch['out_len'])
         return counters
 
-    def get_xent(self, batch, is_train):
+    def get_xent(self, pre_batch, is_train):
         if hasattr(self.model, 'batch_counters'):
-            return self.model.batch_counters(batch, is_train)
+            return self.model.batch_counters(pre_batch, is_train)
+
+        batch=_make_da_batch(pre_batch)
 
         rdo = self.model.encode_decode(self._make_encdec_batch(batch, is_train), is_train)
 
