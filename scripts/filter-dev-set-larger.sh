@@ -2,6 +2,16 @@
 MYFULLPATH=$(readlink -f $0)
 CURDIR=$(dirname $MYFULLPATH)
 
+filterminfreq() {
+  if [ "$1" != "" ]; then
+    awk -F '\t' -vminfreq=$1 '{ if ( $2 >= minfreq && $3 >= minfreq ) { print $0; } }'
+  else
+    cat -
+  fi
+
+}
+
+
 DEVPREFIX="alldevtest.bpe"
 DEVFILTERED="alldevtest.bpe.samesize"
 
@@ -18,6 +28,12 @@ SL=$1
 TL=$2
 TRAINDIR=$3
 DATADIR=$4
+MINFREQ=$5
+
+if [ "$MINFREQ" != "" ]; then
+  DEVPREFIX="min$MINFREQ$DEVPREFIX"
+  DEVFILTERED="min$MINFREQ$DEVFILTERED"
+fi
 
 CORPUSDIR="$TRAINDIR/corpus"
 
@@ -33,7 +49,7 @@ for L in $SL $TL ; do
 done
 
 #Find most frequent number of tokens
-paste $CORPUSDIR/$DEVPREFIX.$SL.numtoks $CORPUSDIR/$DEVPREFIX.$TL.numtoks | LC_ALL=C sort | LC_ALL=C uniq -c | sed 's:^[ ]*::' | tr ' ' '\t' | LC_ALL=C sort -k1,1 -n | tail -n 1 > $CORPUSDIR/$DEVPREFIX.mostfrequenttoknum
+paste $CORPUSDIR/$DEVPREFIX.$SL.numtoks $CORPUSDIR/$DEVPREFIX.$TL.numtoks | LC_ALL=C sort | LC_ALL=C uniq -c | sed 's:^[ ]*::' | tr ' ' '\t' | LC_ALL=C sort -k1,1 -n | filterminfreq  | tail -n 1 > $CORPUSDIR/$DEVPREFIX.mostfrequenttoknum
 
 GREPEXPR=$(cut -f 2,3 $CORPUSDIR/$DEVPREFIX.mostfrequenttoknum)
 GREPEXPR="	$GREPEXPR"
