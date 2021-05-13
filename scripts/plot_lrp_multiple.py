@@ -66,10 +66,13 @@ def avg_lrp_by_src_pos_normed(data, ignore_eos=False):
 def plot_source_influence(alldata,filename,colors,labels):
     fig = plt.figure(figsize=(7, 6), dpi=100)
 
-    for data, color in zip(alldata,colors):
+    #for data, color in zip(alldata,colors):
+    for data in alldata:
         res = avg_lrp_by_pos(data, seg='inp')[1:]
-        plt.plot(range(2, len(res)+2), res, lw=2., color=color)
-        plt.scatter(range(2, len(res)+2), res, lw=3.0, color=color)
+        #plt.plot(range(2, len(res)+2), res, lw=2., color=color)
+        plt.plot(range(2, len(res)+2), res, lw=2.)
+        #plt.scatter(range(2, len(res)+2), res, lw=3.0, color=color)
+        plt.scatter(range(2, len(res)+2), res, lw=3.0)
 
     if labels is not None:
         plt.legend(labels)
@@ -107,12 +110,12 @@ def main():
         'weight' : 'normal',
         'size'   : 20}
     plt.rc('font', **font)
-    cmap = cm.get_cmap('Spectral', 30)    # PiYG
-    spectral_map = [matplotlib.colors.rgb2hex(cmap(i)[:3]) for i in range(cmap.N)]
-    colors = spectral_map[-len(data_list):]
+    #cmap = cm.get_cmap('Spectral', 30)    # PiYG
+    #spectral_map = [matplotlib.colors.rgb2hex(cmap(i)[:3]) for i in range(cmap.N)]
+    #colors = spectral_map[-len(data_list):]
 
 
-    plot_source_influence(data_list,args.output_prefix+".sourceinfluence.png",colors,labels)
+    plot_source_influence(data_list,args.output_prefix+".sourceinfluence.png",None,labels)
 
 
 if __name__ == '__main__':
